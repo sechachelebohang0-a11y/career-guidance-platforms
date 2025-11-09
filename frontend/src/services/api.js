@@ -1,12 +1,15 @@
 import axios from 'axios';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001/api';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://career-guidance-platforms.onrender.com/api';
 
 console.log('🔧 API Base URL:', API_BASE_URL);
 
 const api = axios.create({
   baseURL: API_BASE_URL,
   timeout: 30000, // Increased timeout
+  headers: {
+    'Content-Type': 'application/json',
+  }
 });
 
 // Add token to requests
@@ -15,15 +18,20 @@ api.interceptors.request.use((config) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+  
+  console.log(`🔄 API Request: ${config.method?.toUpperCase()} ${config.url}`);
   return config;
 });
 
 // Handle responses and errors
 api.interceptors.response.use(
   (response) => {
+    console.log(`✅ API Response: ${response.status} ${response.config.url}`);
     return response;
   },
   (error) => {
+    console.error(`❌ API Error: ${error.response?.status} ${error.config?.url}`, error.response?.data);
+    
     if (error.response?.status === 401) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
@@ -33,35 +41,43 @@ api.interceptors.response.use(
   }
 );
 
+// Test backend connection
+export const testBackendConnection = async () => {
+  try {
+    console.log('🧪 Testing backend connection...');
+    const response = await api.get('/test-connection');
+    return { 
+      success: true, 
+      data: response.data,
+      status: response.status
+    };
+  } catch (error) {
+    console.error('Backend connection test failed:', error);
+    return { 
+      success: false, 
+      error: error.message || 'Failed to connect to backend',
+      status: error.response?.status,
+      details: error.response?.data
+    };
+  }
+};
+
 export const authAPI = {
   register: (data) => api.post('/auth/register', data),
   login: (data) => api.post('/auth/login', data),
+  testConnection: testBackendConnection,
   
-  testConnection: async () => {
-    try {
-      const response = await api.get('/test-connection');
-      return { 
-        success: true, 
-        data: response.data,
-        status: response.status
-      };
-    } catch (error) {
-      console.error('Backend connection test failed:', error);
-      return { 
-        success: false, 
-        error: error.message || 'Failed to connect to backend',
-        status: error.response?.status
-      };
-    }
-  }
+  // Test health endpoint
+  healthCheck: () => api.get('/health'),
+  
+  // Test database
+  testDatabase: () => api.get('/test-db')
 };
 
 // Add new methods to studentAPI
 export const studentAPI = {
   getProfile: () => api.get('/students/profile'),
   updateProfile: (data) => api.put('/students/profile', data),
-  // ... other methods
-
   
   // Courses and applications
   getCourses: () => api.get('/students/courses'),
@@ -88,11 +104,9 @@ export const studentAPI = {
   getStats: () => api.get('/students/stats'),
 };
 
-  // src/services/api.js
 export const institutionAPI = {
   getProfile: () => api.get('/institutions/profile'),
   updateProfile: (data) => api.put('/institutions/profile', data),
-  // ... other methods
   addCourse: (data) => api.post('/institutions/courses', data),
   getCourses: () => api.get('/institutions/courses'),
   getApplications: () => api.get('/institutions/applications'),
