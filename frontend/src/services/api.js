@@ -1,9 +1,9 @@
 import axios from 'axios';
 
-// Guaranteed to use Render backend
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://career-guidance-platforms.onrender.com/api';
+// FORCE using Render URL - remove localhost completely
+const API_BASE_URL = 'https://career-guidance-platforms.onrender.com/api';
 
-console.log('🎯 FINAL API Base URL:', API_BASE_URL);
+console.log('🎯 FORCED API Base URL:', API_BASE_URL);
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -13,7 +13,7 @@ const api = axios.create({
   }
 });
 
-// Enhanced request interceptor
+// Add token to requests
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
   if (token) {
@@ -22,26 +22,21 @@ api.interceptors.request.use((config) => {
   
   console.log(`🚀 API Request to: ${config.baseURL}${config.url}`);
   return config;
-}, (error) => {
-  console.error('❌ Request interceptor error:', error);
-  return Promise.reject(error);
 });
 
-// Enhanced response interceptor
+// Handle responses and errors
 api.interceptors.response.use(
   (response) => {
-    console.log(`✅ API Success: ${response.status} ${response.config.url}`);
+    console.log(`✅ API Response: ${response.status} ${response.config.url}`);
     return response;
   },
   (error) => {
-    const errorDetails = {
+    console.error(`❌ API Error:`, {
       url: error.config?.url,
       status: error.response?.status,
       message: error.message,
       data: error.response?.data
-    };
-    
-    console.error('❌ API Error Details:', errorDetails);
+    });
     
     if (error.response?.status === 401) {
       localStorage.removeItem('token');
@@ -49,13 +44,9 @@ api.interceptors.response.use(
       window.location.href = '/login';
     }
     
-    // Enhanced error message for connection issues
+    // Better error message
     if (error.code === 'NETWORK_ERROR' || error.message.includes('Network Error')) {
-      error.message = 'Cannot connect to server. Please check your internet connection.';
-    } else if (error.response?.status === 404) {
-      error.message = 'Requested resource not found.';
-    } else if (error.response?.status >= 500) {
-      error.message = 'Server error. Please try again later.';
+      error.message = 'Cannot connect to backend server. Please check if the backend is deployed on Render.';
     }
     
     return Promise.reject(error);
@@ -75,14 +66,14 @@ export const testBackendConnection = async () => {
       status: response.status
     };
   } catch (error) {
-    const errorMessage = error.response?.data?.message || error.message;
+    console.error('❌ Backend connection test failed:', error);
     return { 
       success: false, 
-      message: `Cannot connect to backend server`,
-      error: errorMessage,
-      url: API_BASE_URL,
+      message: `Cannot connect to backend server at ${API_BASE_URL}`,
+      error: error.message,
       status: error.response?.status,
-      suggestion: 'Please ensure the backend is deployed and running on Render'
+      details: error.response?.data,
+      suggestion: 'Check if your Render deployment is running and the URL is correct'
     };
   }
 };
@@ -95,7 +86,7 @@ export const authAPI = {
   testDatabase: () => api.get('/test-db')
 };
 
-// Student API
+// ... rest of your API exports (studentAPI, institutionAPI, etc.) remain the same
 export const studentAPI = {
   getProfile: () => api.get('/students/profile'),
   updateProfile: (data) => api.put('/students/profile', data),
@@ -115,7 +106,6 @@ export const studentAPI = {
   getStats: () => api.get('/students/stats'),
 };
 
-// Institution API
 export const institutionAPI = {
   getProfile: () => api.get('/institutions/profile'),
   updateProfile: (data) => api.put('/institutions/profile', data),
@@ -133,7 +123,6 @@ export const institutionAPI = {
   deactivateCourse: (courseId, data) => api.put(`/institutions/courses/${courseId}/status`, data),
 };
 
-// Company API
 export const companyAPI = {
   getProfile: () => api.get('/companies/profile'),
   updateProfile: (data) => api.put('/companies/profile', data),
@@ -141,14 +130,12 @@ export const companyAPI = {
   getJobApplications: () => api.get('/companies/jobs/applications'),
 };
 
-// Job API
 export const jobAPI = {
   getJobs: () => api.get('/jobs'),
   getJobDetails: (id) => api.get(`/jobs/${id}`),
   applyForJob: (id) => api.post(`/jobs/${id}/apply`),
 };
 
-// Admin API (keeping your existing methods)
 export const adminAPI = {
   getDashboardStats: () => api.get('/admin/dashboard/stats'),
   getSystemReports: () => api.get('/admin/reports'),
