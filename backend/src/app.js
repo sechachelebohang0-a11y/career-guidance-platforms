@@ -53,7 +53,7 @@ app.get('/api/test-connection', (req, res) => {
   });
 });
 
-// Health check route
+// Health check route that never fails
 app.get('/api/health', async (req, res) => {
   const firebaseStatus = firebaseConfig.getFirebaseStatus();
   
@@ -89,7 +89,7 @@ app.get('/api/health', async (req, res) => {
   });
 });
 
-// Test Firebase connection
+// Test Firebase connection with better error handling
 app.get('/api/test-db', async (req, res) => {
   try {
     const firebaseStatus = firebaseConfig.getFirebaseStatus();
@@ -105,6 +105,7 @@ app.get('/api/test-db', async (req, res) => {
     
     const db = firebaseConfig.getDb();
     
+    // Simple test - just try to list collections (no write operations)
     console.log('🧪 Testing Firestore connection...');
     const collections = await db.listCollections();
     const collectionNames = collections.map(col => col.id);
@@ -120,6 +121,7 @@ app.get('/api/test-db', async (req, res) => {
   } catch (error) {
     console.error('❌ Database test error:', error.message);
     
+    // Provide helpful error messages based on the error type
     let userMessage = 'Database connection test failed';
     let suggestion = 'Check your Firebase configuration and service account permissions';
     
@@ -164,7 +166,7 @@ app.post('/api/test-post', (req, res) => {
   });
 });
 
-// Routes
+// Routes - these will handle their own Firebase errors
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/admin', require('./routes/admin'));
 app.use('/api/institutions', require('./routes/institutions'));
@@ -216,23 +218,24 @@ app.use('*', (req, res) => {
 });
 
 // Start server
-const PORT = process.env.PORT || 5001;
+const PORT = process.env.PORT || 5000;
 
-// Wait for Firebase initialization before starting server
-firebaseConfig.waitForInit().then((success) => {
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 Server running on port ${PORT}`);
-    console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
-    console.log(`🔗 Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:3000'}`);
-    console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
-    console.log(`🔌 Test connection: http://localhost:${PORT}/api/test-connection`);
-    console.log(`🧪 Database test: http://localhost:${PORT}/api/test-db`);
-    console.log(`🔧 API Base: http://localhost:${PORT}/api`);
-    console.log(`🔑 Auth test: http://localhost:${PORT}/api/auth/test`);
-    
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`🔗 Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:3000'}`);
+  console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
+  console.log(`🔌 Test connection: http://localhost:${PORT}/api/test-connection`);
+  console.log(`🧪 Database test: http://localhost:${PORT}/api/test-db`);
+  console.log(`🔧 API Base: http://localhost:${PORT}/api`);
+  console.log(`🔑 Auth test: http://localhost:${PORT}/api/auth/test`);
+  
+  // Check Firebase status after a short delay to allow for initialization
+  setTimeout(() => {
     const status = firebaseConfig.getFirebaseStatus();
     if (status.isInitialized) {
       console.log(`🔥 Firebase: ✅ Connected and ready`);
+      console.log(`📁 Available collections: ${status.collections || 'Loading...'}`);
     } else if (status.error) {
       console.log(`🔥 Firebase: ❌ Initialization failed`);
       console.log(`   Error: ${status.error}`);
@@ -240,20 +243,17 @@ firebaseConfig.waitForInit().then((success) => {
     } else {
       console.log(`🔥 Firebase: ⚠️ Still initializing...`);
     }
-  });
-}).catch((error) => {
-  console.error('💥 Failed to initialize Firebase:', error);
-  console.log('⚠️ Starting server anyway, but Firebase features will not work');
-  
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 Server running on port ${PORT} (without Firebase)`);
-    console.log(`💡 Please fix Firebase configuration to enable full functionality`);
-  });
+  }, 2000);
 });
 
 // Handle uncaught exceptions
 process.on('uncaughtException', (error) => {
   console.error('💥 Uncaught Exception:', error);
+  // Optionally exit process: process.exit(1);
 });
 
-process.on('unhandledRejection', (reaso
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('💥 Unhandled Rejection at:', promise, 'reason:', reason);
+  // Optionally exit process: process.exit(1);
+});
