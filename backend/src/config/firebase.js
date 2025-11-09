@@ -19,8 +19,6 @@ const initializeFirebase = async () => {
       console.log('🚀 Using Firebase service account from environment variables');
       try {
         serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-        console.log('✅ Loaded service account for project:', serviceAccount.project_id);
-        console.log('📧 Client Email:', serviceAccount.client_email);
       } catch (parseError) {
         throw new Error(`Failed to parse FIREBASE_SERVICE_ACCOUNT: ${parseError.message}`);
       }
@@ -35,11 +33,12 @@ const initializeFirebase = async () => {
       }
 
       serviceAccount = require(serviceAccountPath);
-      console.log('✅ Loaded service account for project:', serviceAccount.project_id);
-      console.log('📧 Client Email:', serviceAccount.client_email);
     }
 
-    // Initialize Firebase Admin with more options
+    console.log('✅ Loaded service account for project:', serviceAccount.project_id);
+    console.log('📧 Client Email:', serviceAccount.client_email);
+
+    // Initialize Firebase Admin with explicit settings
     admin.initializeApp({
       credential: admin.credential.cert(serviceAccount),
       databaseURL: `https://${serviceAccount.project_id}.firebaseio.com`,
@@ -52,53 +51,58 @@ const initializeFirebase = async () => {
     db = admin.firestore();
     auth = admin.auth();
     
-    // Configure Firestore settings
-    db.settings({ 
+    // Configure Firestore with optimized settings
+    db.settings({
       ignoreUndefinedProperties: true,
-      timestampsInSnapshots: true
+      preferRest: false // Force gRPC connection
     });
     
     console.log('✅ Firestore service initialized');
     console.log('✅ Firebase Auth initialized');
     
-    // Test Firestore connection with comprehensive error handling
+    // Test Firestore connection with specific error handling
     try {
       console.log('🧪 Testing Firestore connection...');
       
-      // Try a simple operation first
-      const testDoc = db.collection('_test_connection').doc('test');
-      await testDoc.set({ test: true, timestamp: new Date() });
-      await testDoc.delete();
-      
-      // Then list collections
+      // Try different operations to pinpoint the issue
+      console.log('   Testing collection listing...');
       const collections = await db.listCollections();
-      console.log('📁 Available collections:', collections.map(col => col.id));
-      console.log('🎉 Firebase connection test successful!');
+      console.log('   ✅ Collection listing successful');
+      console.log('   📁 Available collections:', collections.map(col => col.id));
       
-    } catch (readError) {
-      console.log('🔐 Firebase Connection Error Analysis:');
-      console.log('   Error Code:', readError.code);
-      console.log('   Error Message:', readError.message);
+      // Test reading from an existing collection
+      console.log('   Testing document read...');
+      const usersSnapshot = await db.collection('users').limit(1).get();
+      console.log(`   ✅ Document read successful - Found ${usersSnapshot.size} users`);
       
-      if (readError.code === 16 || readError.message.includes('UNAUTHENTICATED')) {
+      console.log('🎉 All Firestore tests passed! Database is fully accessible.');
+      
+    } catch (error) {
+      console.log('🔐 Detailed Firebase Error Analysis:');
+      console.log('   Error Code:', error.code);
+      console.log('   Error Message:', error.message);
+      
+      if (error.code === 16) {
         console.log('💡 UNAUTHENTICATED Error Solutions:');
-        console.log('   1. Go to Google Cloud Console → IAM & Admin → IAM');
-        console.log('   2. Find service account:', serviceAccount.client_email);
-        console.log('   3. Add these roles:');
+        console.log('   Your service account has the correct roles but there might be:');
+        console.log('   1. ROLE CONFLICT - Remove these conflicting roles:');
+        console.log('      - Editor (conflicts with Firebase-specific roles)');
+        console.log('      - Firebase Admin (redundant)');
+        console.log('      - Firebase Authentication Admin (redundant)');
+        console.log('   2. Keep only these essential roles:');
         console.log('      - Firebase Admin SDK Administrator Service Agent');
         console.log('      - Cloud Datastore Owner');
         console.log('      - Firestore Service Agent');
         console.log('      - Service Account Token Creator');
-        console.log('      - Service Account User');
-        console.log('   4. Wait 5-10 minutes for permissions to propagate');
-      } else if (readError.code === 7 || readError.message.includes('PERMISSION_DENIED')) {
-        console.log('💡 PERMISSION_DENIED Error Solutions:');
-        console.log('   1. Enable Firestore API in Google Cloud Console');
-        console.log('   2. Check if Firestore database is created in Firebase Console');
-        console.log('   3. Verify project billing is enabled');
+        console.log('   3. Wait 10-15 minutes for permission propagation');
+        console.log('   4. Try regenerating the service account key');
       }
       
-      console.log('🔧 App will continue running with limited database functionality');
+      if (error.details) {
+        console.log('   Additional Details:', error.details);
+      }
+      
+      console.log('🔧 App will continue running. Some features may be limited until Firebase is fully configured.');
     }
     
     isInitialized = true;
@@ -109,7 +113,7 @@ const initializeFirebase = async () => {
     
   } catch (error) {
     console.error('❌ Firebase initialization failed:', error.message);
-    console.error('   Stack:', error.stack);
+    console.error('   Stack trace:', error.stack);
     initializationError = error;
     isInitialized = false;
     return false;
