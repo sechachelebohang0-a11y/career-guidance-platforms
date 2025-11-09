@@ -9,9 +9,14 @@ const firebaseConfig = require('./config/firebase');
 
 const app = express();
 
-// Enhanced CORS configuration
+// Enhanced CORS configuration - FIXED: Added Vercel frontend URL
 app.use(cors({
-  origin: ['http://localhost:3000', 'http://127.0.0.1:3000', process.env.FRONTEND_URL].filter(Boolean),
+  origin: [
+    'http://localhost:3000', 
+    'http://127.0.0.1:3000', 
+    'https://career-guidance-platforms.vercel.app',
+    process.env.FRONTEND_URL
+  ].filter(Boolean),
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
@@ -281,7 +286,7 @@ const PORT = process.env.PORT || 10000;
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`🔗 Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:3000'}`);
+  console.log(`🔗 Frontend URLs: localhost:3000, career-guidance-platforms.vercel.app`);
   console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
   console.log(`🔌 Test connection: http://localhost:${PORT}/api/test-connection`);
   console.log(`🧪 Database test: http://localhost:${PORT}/api/test-db`);
