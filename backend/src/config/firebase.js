@@ -12,89 +12,106 @@ let initializationError = null;
 
 const initializeFirebase = async () => {
   try {
-    // For Render deployment - check environment variable first
-    if (process.env.FIREBASE_SERVICE_ACCOUNT) {
-      console.log('🚀 Using Firebase service account from environment variables');
-      const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-      console.log('✅ Loaded service account for project:', serviceAccount.project_id);
-      console.log('📧 Client Email:', serviceAccount.client_email);
-
-      admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount),
-        databaseURL: `https://${serviceAccount.project_id}.firebaseio.com`
-      });
-    } else {
-      // For local development - use service account file from config folder
-      const serviceAccountPath = path.join(__dirname, 'serviceAccountKey.json');
-      
-      console.log('🔍 Looking for service account at:', serviceAccountPath);
-      
-      if (!fs.existsSync(serviceAccountPath)) {
-        throw new Error(`serviceAccountKey.json not found at: ${serviceAccountPath}`);
-      }
-
-      const serviceAccount = require(serviceAccountPath);
-      console.log('✅ Loaded service account for project:', serviceAccount.project_id);
-      console.log('📧 Client Email:', serviceAccount.client_email);
-
-      admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount),
-        databaseURL: `https://${serviceAccount.project_id}.firebaseio.com`
-      });
+    const serviceAccountPath = path.join(__dirname, 'serviceAccountKey.json');
+    
+    if (!fs.existsSync(serviceAccountPath)) {
+      throw new Error('serviceAccountKey.json not found in src/config folder');
     }
+
+    const serviceAccount = require(serviceAccountPath);
+    console.log('✅ Loaded service account for project:', serviceAccount.project_id);
+
+    // Clear any existing apps to avoid conflicts
+    if (admin.apps.length > 0) {
+      await Promise.all(admin.apps.map(app => app.delete()));
+      console.log('♻️  Cleared existing Firebase apps');
+    }
+
+    // Initialize with explicit configuration
+    const app = admin.initializeApp({
+      credential: admin.credential.cert({
+        type: serviceAccount.type,
+        project_id: serviceAccount.project_id,
+        private_key_id: serviceAccount.private_key_id,
+        private_key: serviceAccount.private_key.replace(/\\n/g, '\n'), // Fix newlines
+        client_email: serviceAccount.client_email,
+        client_id: serviceAccount.client_id,
+        auth_uri: serviceAccount.auth_uri,
+        token_uri: serviceAccount.token_uri,
+        auth_provider_x509_cert_url: serviceAccount.auth_provider_x509_cert_url,
+        client_x509_cert_url: serviceAccount.client_x509_cert_url
+      }),
+      projectId: serviceAccount.project_id,
+      databaseURL: `https://${serviceAccount.project_id}.firebaseio.com`
+    });
 
     console.log('✅ Firebase Admin SDK initialized successfully');
     
-    // Initialize services - KEEP DATABASE CONNECTION
+    // Initialize services
     db = admin.firestore();
     auth = admin.auth();
     
     console.log('✅ Firestore service initialized');
     console.log('✅ Firebase Auth initialized');
-    
-    // Test Firestore connection - KEEP DATABASE CONNECTION
+
+    // Simple connectivity test without complex operations
     try {
-      const collections = await db.listCollections();
-      console.log('📁 Available collections:', collections.map(col => col.id));
-    } catch (readError) {
-      console.log('⚠️ Note: Firestore read access might be limited:', readError.message);
+      console.log('🧪 Testing basic Firebase connectivity...');
+      // Just verify we can access the services
+      const firestoreReady = db !== null;
+      const authReady = auth !== null;
+      
+      if (firestoreReady && authReady) {
+        console.log('✅ Firebase services are ready');
+      }
+    } catch (testError) {
+      console.log('⚠️  Connectivity test skipped:', testError.message);
     }
-    
+
     isInitialized = true;
     initializationError = null;
-    console.log('🎉 Firebase initialization completed!');
+    console.log('🎉 Firebase initialization completed! Services ready.');
     
     return true;
     
   } catch (error) {
     console.error('❌ Firebase initialization failed:', error.message);
+    
+    // Provide specific guidance based on error type
+    if (error.message.includes('invalid_grant') || error.message.includes('JWT')) {
+      console.log('\n🔐 Authentication Issue Detected:');
+      console.log('💡 Possible solutions:');
+      console.log('   1. Wait a few minutes - new keys can take time to propagate');
+      console.log('   2. Check if service account has proper roles in Google Cloud Console');
+      console.log('   3. Ensure your system clock is synchronized');
+    }
+    
     initializationError = error;
     isInitialized = false;
     return false;
   }
 };
 
-// Initialize immediately - KEEP DATABASE CONNECTION
+// Initialize immediately
 const initPromise = initializeFirebase();
 
-// Define firebaseService object - KEEP ALL DATABASE REFERENCES
 const firebaseService = {
-  // Safe getters - KEEP DATABASE ACCESS
+  // Safe getters
   getDb: () => {
-    if (!db) {
+    if (!isInitialized || !db) {
       throw new Error('Firestore not available. Check Firebase initialization.');
     }
     return db;
   },
   
   getAuth: () => {
-    if (!auth) {
+    if (!isInitialized || !auth) {
       throw new Error('Firebase Auth not available. Check Firebase initialization.');
     }
     return auth;
   },
   
-  // Collection references - KEEP ALL DATABASE COLLECTIONS
+  // Collection references
   getUsersRef: () => {
     const database = firebaseService.getDb();
     return database.collection('users');

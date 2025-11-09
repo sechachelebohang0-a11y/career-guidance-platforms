@@ -40,6 +40,30 @@ app.use((req, res, next) => {
   next();
 });
 
+// ==================== FIREBASE INITIALIZATION MIDDLEWARE ====================
+
+// Add this middleware to check Firebase status for auth routes
+app.use('/api/auth/*', async (req, res, next) => {
+  try {
+    await firebaseConfig.waitForInit();
+    if (!firebaseConfig.isInitialized()) {
+      return res.status(503).json({
+        success: false,
+        message: 'Authentication service initializing. Please try again in a moment.',
+        timestamp: new Date().toISOString()
+      });
+    }
+    next();
+  } catch (error) {
+    return res.status(503).json({
+      success: false,
+      message: 'Authentication service unavailable',
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 // ==================== ROUTES ====================
 
 // Root route - should be first
