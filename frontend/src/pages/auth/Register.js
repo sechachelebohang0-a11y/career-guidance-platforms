@@ -1,4 +1,3 @@
-// src/pages/auth/Register.js
 import React, { useState, useEffect } from 'react';
 import {
   Container,
@@ -8,312 +7,113 @@ import {
   Typography,
   Box,
   Alert,
-  CircularProgress,
+  Link,
+  FormControl,
+  InputLabel,
+  Select,
   MenuItem,
-  Stepper,
-  Step,
-  StepLabel
+  CircularProgress,
 } from '@mui/material';
+import { Link as RouterLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { useNavigate, useLocation } from 'react-router-dom';
 import Navbar from '../../components/common/Navbar';
 
 const Register = () => {
-  const [step, setStep] = useState(0);
   const [formData, setFormData] = useState({
+    firstName: '',
+    lastName: '',
     email: '',
     password: '',
     confirmPassword: '',
     role: '',
-    firstName: '',
-    lastName: '',
     phone: '',
-    institutionName: '',
+    dateOfBirth: '',
     address: '',
-    website: '',
-    companyName: '',
-    industry: '',
-    size: ''
   });
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [testingConnection, setTestingConnection] = useState(true);
+  const [connectionStatus, setConnectionStatus] = useState('checking');
 
-  const { register, backendStatus } = useAuth();
+  const { register, backendStatus, checkBackendStatus } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
   useEffect(() => {
-    if (location.state?.role) {
-      setFormData(prev => ({ ...prev, role: location.state.role }));
+    // Test backend connection when component mounts
+    testConnection();
+  }, []);
+
+  const testConnection = async () => {
+    try {
+      console.log('🔍 Testing backend connection...');
+      const result = await checkBackendStatus();
+      
+      if (result.success) {
+        setConnectionStatus('connected');
+        console.log('✅ Backend is connected and ready');
+      } else {
+        setConnectionStatus('failed');
+        console.error('❌ Backend connection failed');
+      }
+    } catch (error) {
+      setConnectionStatus('failed');
+      console.error('❌ Connection test error:', error);
+    } finally {
+      setTestingConnection(false);
     }
-  }, [location]);
+  };
 
   const handleChange = (e) => {
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value
+      [e.target.name]: e.target.value,
     });
-  };
-
-  const handleNext = () => {
-    setStep(step + 1);
-  };
-
-  const handleBack = () => {
-    setStep(step - 1);
-  };
-
-  const getStepContent = (step) => {
-    switch (step) {
-      case 0:
-        return (
-          <>
-            <TextField
-              margin="normal"
-              required
-              fullWidth
-              name="email"
-              label="Email Address"
-              type="email"
-              value={formData.email}
-              onChange={handleChange}
-              disabled={loading}
-            />
-            <TextField
-              margin="normal"
-              required
-              fullWidth
-              name="password"
-              label="Password"
-              type="password"
-              value={formData.password}
-              onChange={handleChange}
-              disabled={loading}
-              helperText="Password must be at least 6 characters long"
-            />
-            <TextField
-              margin="normal"
-              required
-              fullWidth
-              name="confirmPassword"
-              label="Confirm Password"
-              type="password"
-              value={formData.confirmPassword}
-              onChange={handleChange}
-              disabled={loading}
-            />
-            <TextField
-              margin="normal"
-              required
-              fullWidth
-              select
-              name="role"
-              label="I am a"
-              value={formData.role}
-              onChange={handleChange}
-              disabled={loading}
-            >
-              <MenuItem value="student">Student</MenuItem>
-              <MenuItem value="institution">Institution</MenuItem>
-              <MenuItem value="company">Company</MenuItem>
-            </TextField>
-          </>
-        );
-      case 1:
-        if (formData.role === 'student') {
-          return (
-            <>
-              <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>
-                Student Information
-              </Typography>
-              <TextField
-                margin="normal"
-                required
-                fullWidth
-                name="firstName"
-                label="First Name"
-                value={formData.firstName}
-                onChange={handleChange}
-                disabled={loading}
-              />
-              <TextField
-                margin="normal"
-                required
-                fullWidth
-                name="lastName"
-                label="Last Name"
-                value={formData.lastName}
-                onChange={handleChange}
-                disabled={loading}
-              />
-              <TextField
-                margin="normal"
-                required
-                fullWidth
-                name="phone"
-                label="Phone Number"
-                value={formData.phone}
-                onChange={handleChange}
-                disabled={loading}
-              />
-            </>
-          );
-        } else if (formData.role === 'institution') {
-          return (
-            <>
-              <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>
-                Institution Information
-              </Typography>
-              <TextField
-                margin="normal"
-                required
-                fullWidth
-                name="institutionName"
-                label="Institution Name"
-                value={formData.institutionName}
-                onChange={handleChange}
-                disabled={loading}
-              />
-              <TextField
-                margin="normal"
-                required
-                fullWidth
-                name="address"
-                label="Address"
-                multiline
-                rows={2}
-                value={formData.address}
-                onChange={handleChange}
-                disabled={loading}
-              />
-              <TextField
-                margin="normal"
-                required
-                fullWidth
-                name="phone"
-                label="Phone Number"
-                value={formData.phone}
-                onChange={handleChange}
-                disabled={loading}
-              />
-              <TextField
-                margin="normal"
-                fullWidth
-                name="website"
-                label="Website"
-                value={formData.website}
-                onChange={handleChange}
-                disabled={loading}
-              />
-            </>
-          );
-        } else {
-          return (
-            <>
-              <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>
-                Company Information
-              </Typography>
-              <TextField
-                margin="normal"
-                required
-                fullWidth
-                name="companyName"
-                label="Company Name"
-                value={formData.companyName}
-                onChange={handleChange}
-                disabled={loading}
-              />
-              <TextField
-                margin="normal"
-                required
-                fullWidth
-                name="industry"
-                label="Industry"
-                value={formData.industry}
-                onChange={handleChange}
-                disabled={loading}
-              />
-              <TextField
-                margin="normal"
-                required
-                fullWidth
-                select
-                name="size"
-                label="Company Size"
-                value={formData.size}
-                onChange={handleChange}
-                disabled={loading}
-              >
-                <MenuItem value="1-10">1-10 employees</MenuItem>
-                <MenuItem value="11-50">11-50 employees</MenuItem>
-                <MenuItem value="51-200">51-200 employees</MenuItem>
-                <MenuItem value="201-500">201-500 employees</MenuItem>
-                <MenuItem value="501+">501+ employees</MenuItem>
-              </TextField>
-            </>
-          );
-        }
-      default:
-        return 'Unknown step';
-    }
+    setError('');
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (backendStatus === 'offline') {
-      setError('Cannot connect to server. Please make sure the backend is running on port 5001.');
+    if (connectionStatus === 'failed') {
+      setError('Cannot connect to server. Please check if the Render deployment is running.');
+      return;
+    }
+
+    // Basic validation
+    if (formData.password !== formData.confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+
+    if (!formData.role) {
+      setError('Please select a role');
       return;
     }
 
     setLoading(true);
     setError('');
 
-    if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match');
-      setLoading(false);
-      return;
-    }
-
-    if (formData.password.length < 6) {
-      setError('Password must be at least 6 characters long');
-      setLoading(false);
-      return;
-    }
-
-    const userData = {
+    // Prepare data for API
+    const submitData = {
+      firstName: formData.firstName,
+      lastName: formData.lastName,
       email: formData.email,
       password: formData.password,
       role: formData.role,
-      userData: {}
+      phone: formData.phone,
+      dateOfBirth: formData.dateOfBirth,
+      address: formData.address,
     };
 
-    if (formData.role === 'student') {
-      userData.userData = {
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        phone: formData.phone
-      };
-    } else if (formData.role === 'institution') {
-      userData.userData = {
-        name: formData.institutionName,
-        address: formData.address,
-        phone: formData.phone,
-        website: formData.website
-      };
-    } else {
-      userData.userData = {
-        name: formData.companyName,
-        industry: formData.industry,
-        size: formData.size
-      };
-    }
-
-    const result = await register(userData);
+    const result = await register(submitData);
     
     if (result.success) {
+      // Redirect to login page with success message
       navigate('/login', { 
-        state: { message: 'Registration successful! Please login with your credentials.' }
+        state: { 
+          message: 'Registration successful! Please sign in.' 
+        } 
       });
     } else {
       setError(result.message);
@@ -322,7 +122,11 @@ const Register = () => {
     setLoading(false);
   };
 
-  const steps = ['Account Information', 'Profile Details'];
+  const handleRetryConnection = () => {
+    setTestingConnection(true);
+    setConnectionStatus('checking');
+    testConnection();
+  };
 
   return (
     <>
@@ -334,27 +138,42 @@ const Register = () => {
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
-            minHeight: '80vh'
           }}
         >
           <Paper elevation={3} sx={{ padding: 4, width: '100%' }}>
-            <Typography component="h1" variant="h4" align="center" gutterBottom fontWeight="bold">
+            <Typography component="h1" variant="h4" align="center" gutterBottom>
               Create Account
             </Typography>
-
-            {backendStatus === 'offline' && (
-              <Alert severity="error" sx={{ mb: 2 }}>
-                Cannot connect to server. Please ensure the backend is running on port 5001.
+            
+            {/* Connection Status */}
+            {testingConnection && (
+              <Alert severity="info" sx={{ mb: 2 }}>
+                <Box display="flex" alignItems="center" gap={1}>
+                  <CircularProgress size={16} />
+                  Testing connection to Render backend...
+                </Box>
               </Alert>
             )}
-
-            <Stepper activeStep={step} sx={{ mb: 4, mt: 2 }}>
-              {steps.map((label) => (
-                <Step key={label}>
-                  <StepLabel>{label}</StepLabel>
-                </Step>
-              ))}
-            </Stepper>
+            
+            {connectionStatus === 'failed' && !testingConnection && (
+              <Alert 
+                severity="error" 
+                sx={{ mb: 2 }}
+                action={
+                  <Button color="inherit" size="small" onClick={handleRetryConnection}>
+                    Retry
+                  </Button>
+                }
+              >
+                Cannot connect to server. Please check if the Render deployment is running.
+              </Alert>
+            )}
+            
+            {connectionStatus === 'connected' && !testingConnection && (
+              <Alert severity="success" sx={{ mb: 2 }}>
+                ✅ Connected to Render backend successfully!
+              </Alert>
+            )}
 
             {error && (
               <Alert severity="error" sx={{ mb: 2 }}>
@@ -362,26 +181,147 @@ const Register = () => {
               </Alert>
             )}
 
-            <Box component="form" onSubmit={step === 1 ? handleSubmit : (e) => { e.preventDefault(); handleNext(); }}>
-              {getStepContent(step)}
-              
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 3 }}>
-                <Button
-                  onClick={handleBack}
-                  disabled={step === 0 || loading}
-                  variant="outlined"
+            <Box component="form" onSubmit={handleSubmit} sx={{ mt: 1 }}>
+              <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+                <TextField
+                  required
+                  fullWidth
+                  id="firstName"
+                  label="First Name"
+                  name="firstName"
+                  autoComplete="given-name"
+                  value={formData.firstName}
+                  onChange={handleChange}
+                  disabled={loading || connectionStatus === 'failed'}
+                />
+                <TextField
+                  required
+                  fullWidth
+                  id="lastName"
+                  label="Last Name"
+                  name="lastName"
+                  autoComplete="family-name"
+                  value={formData.lastName}
+                  onChange={handleChange}
+                  disabled={loading || connectionStatus === 'failed'}
+                />
+              </Box>
+
+              <TextField
+                margin="normal"
+                required
+                fullWidth
+                id="email"
+                label="Email Address"
+                name="email"
+                autoComplete="email"
+                value={formData.email}
+                onChange={handleChange}
+                disabled={loading || connectionStatus === 'failed'}
+              />
+
+              <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+                <TextField
+                  required
+                  fullWidth
+                  name="password"
+                  label="Password"
+                  type="password"
+                  id="password"
+                  autoComplete="new-password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  disabled={loading || connectionStatus === 'failed'}
+                />
+                <TextField
+                  required
+                  fullWidth
+                  name="confirmPassword"
+                  label="Confirm Password"
+                  type="password"
+                  id="confirmPassword"
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                  disabled={loading || connectionStatus === 'failed'}
+                />
+              </Box>
+
+              <FormControl fullWidth margin="normal" required>
+                <InputLabel id="role-label">Role</InputLabel>
+                <Select
+                  labelId="role-label"
+                  id="role"
+                  name="role"
+                  value={formData.role}
+                  label="Role"
+                  onChange={handleChange}
+                  disabled={loading || connectionStatus === 'failed'}
                 >
-                  Back
-                </Button>
-                <Button
-                  type="submit"
-                  variant="contained"
-                  disabled={loading || backendStatus === 'offline'}
-                  sx={{ minWidth: 120 }}
-                >
-                  {loading ? <CircularProgress size={24} /> : 
-                  step === steps.length - 1 ? 'Register' : 'Next'}
-                </Button>
+                  <MenuItem value="student">Student</MenuItem>
+                  <MenuItem value="institution">Institution</MenuItem>
+                  <MenuItem value="company">Company</MenuItem>
+                </Select>
+              </FormControl>
+
+              <TextField
+                margin="normal"
+                fullWidth
+                id="phone"
+                label="Phone Number"
+                name="phone"
+                autoComplete="tel"
+                value={formData.phone}
+                onChange={handleChange}
+                disabled={loading || connectionStatus === 'failed'}
+              />
+
+              <TextField
+                margin="normal"
+                fullWidth
+                id="dateOfBirth"
+                label="Date of Birth"
+                name="dateOfBirth"
+                type="date"
+                InputLabelProps={{ shrink: true }}
+                value={formData.dateOfBirth}
+                onChange={handleChange}
+                disabled={loading || connectionStatus === 'failed'}
+              />
+
+              <TextField
+                margin="normal"
+                fullWidth
+                id="address"
+                label="Address"
+                name="address"
+                autoComplete="street-address"
+                multiline
+                rows={2}
+                value={formData.address}
+                onChange={handleChange}
+                disabled={loading || connectionStatus === 'failed'}
+              />
+
+              <Button
+                type="submit"
+                fullWidth
+                variant="contained"
+                sx={{ mt: 3, mb: 2 }}
+                disabled={loading || connectionStatus === 'failed' || testingConnection}
+              >
+                {loading ? (
+                  <Box display="flex" alignItems="center" gap={1}>
+                    <CircularProgress size={16} />
+                    Creating Account...
+                  </Box>
+                ) : (
+                  'Sign Up'
+                )}
+              </Button>
+              <Box textAlign="center">
+                <Link component={RouterLink} to="/login" variant="body2">
+                  Already have an account? Sign In
+                </Link>
               </Box>
             </Box>
           </Paper>
