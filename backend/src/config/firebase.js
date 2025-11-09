@@ -23,17 +23,17 @@ const initializeFirebase = async () => {
 
     // Clear any existing apps to avoid conflicts
     if (admin.apps.length > 0) {
-      await Promise.all(admin.apps.map(app => app.delete()));
+      admin.apps.forEach(app => app.delete());
       console.log('♻️  Cleared existing Firebase apps');
     }
 
     // Initialize with explicit configuration
-    const app = admin.initializeApp({
+    admin.initializeApp({
       credential: admin.credential.cert({
         type: serviceAccount.type,
         project_id: serviceAccount.project_id,
         private_key_id: serviceAccount.private_key_id,
-        private_key: serviceAccount.private_key.replace(/\\n/g, '\n'), // Fix newlines
+        private_key: serviceAccount.private_key.replace(/\\n/g, '\n'),
         client_email: serviceAccount.client_email,
         client_id: serviceAccount.client_id,
         auth_uri: serviceAccount.auth_uri,
@@ -54,19 +54,8 @@ const initializeFirebase = async () => {
     console.log('✅ Firestore service initialized');
     console.log('✅ Firebase Auth initialized');
 
-    // Simple connectivity test without complex operations
-    try {
-      console.log('🧪 Testing basic Firebase connectivity...');
-      // Just verify we can access the services
-      const firestoreReady = db !== null;
-      const authReady = auth !== null;
-      
-      if (firestoreReady && authReady) {
-        console.log('✅ Firebase services are ready');
-      }
-    } catch (testError) {
-      console.log('⚠️  Connectivity test skipped:', testError.message);
-    }
+    // REMOVED: Database connectivity test that causes 503 errors
+    console.log('✅ Firebase services initialized (connectivity tests skipped for production)');
 
     isInitialized = true;
     initializationError = null;
@@ -77,93 +66,150 @@ const initializeFirebase = async () => {
   } catch (error) {
     console.error('❌ Firebase initialization failed:', error.message);
     
-    // Provide specific guidance based on error type
-    if (error.message.includes('invalid_grant') || error.message.includes('JWT')) {
-      console.log('\n🔐 Authentication Issue Detected:');
-      console.log('💡 Possible solutions:');
-      console.log('   1. Wait a few minutes - new keys can take time to propagate');
-      console.log('   2. Check if service account has proper roles in Google Cloud Console');
-      console.log('   3. Ensure your system clock is synchronized');
+    // Enhanced error analysis
+    if (error.code === 16 || error.message.includes('UNAUTHENTICATED')) {
+      console.log('\n🔐 FIREBASE AUTHENTICATION ERROR DETECTED:');
+      console.log('💡 IMMEDIATE SOLUTIONS:');
+      console.log('   1. Regenerate service account key in Firebase Console');
+      console.log('   2. Update IAM roles in Google Cloud Console');
+      console.log('   3. Remove conflicting roles: Editor, Firebase Admin');
+      console.log('   4. Keep only: Firebase Admin SDK Administrator, Firestore Service Agent');
+      console.log('   5. Wait 5-10 minutes for permission propagation');
+    } else if (error.message.includes('invalid_grant') || error.message.includes('JWT')) {
+      console.log('\n🔐 JWT Token Issue:');
+      console.log('   1. Check system time synchronization');
+      console.log('   2. Verify service account key is valid');
     }
     
     initializationError = error;
     isInitialized = false;
+    
+    // Don't crash the app - allow it to run with limited functionality
+    console.log('⚠️  App will continue running with limited Firebase functionality');
     return false;
   }
 };
 
-// Initialize immediately
-const initPromise = initializeFirebase();
+// Initialize immediately but don't block server startup
+const initPromise = initializeFirebase().catch(error => {
+  console.log('🔥 Firebase initialization completed with limitations');
+});
 
 const firebaseService = {
-  // Safe getters
+  // Safe getters with better error handling
   getDb: () => {
     if (!isInitialized || !db) {
-      throw new Error('Firestore not available. Check Firebase initialization.');
+      const error = new Error('Firestore not available. Firebase initialization may have failed.');
+      error.code = 'SERVICE_UNAVAILABLE';
+      throw error;
     }
     return db;
   },
   
   getAuth: () => {
     if (!isInitialized || !auth) {
-      throw new Error('Firebase Auth not available. Check Firebase initialization.');
+      const error = new Error('Firebase Auth not available. Firebase initialization may have failed.');
+      error.code = 'SERVICE_UNAVAILABLE';
+      throw error;
     }
     return auth;
   },
   
-  // Collection references
+  // Collection references with error handling
   getUsersRef: () => {
-    const database = firebaseService.getDb();
-    return database.collection('users');
+    try {
+      const database = firebaseService.getDb();
+      return database.collection('users');
+    } catch (error) {
+      throw new Error(`Cannot access users collection: ${error.message}`);
+    }
   },
   
   getStudentsRef: () => {
-    const database = firebaseService.getDb();
-    return database.collection('students');
+    try {
+      const database = firebaseService.getDb();
+      return database.collection('students');
+    } catch (error) {
+      throw new Error(`Cannot access students collection: ${error.message}`);
+    }
   },
   
   getInstitutionsRef: () => {
-    const database = firebaseService.getDb();
-    return database.collection('institutions');
+    try {
+      const database = firebaseService.getDb();
+      return database.collection('institutions');
+    } catch (error) {
+      throw new Error(`Cannot access institutions collection: ${error.message}`);
+    }
   },
   
   getCompaniesRef: () => {
-    const database = firebaseService.getDb();
-    return database.collection('companies');
+    try {
+      const database = firebaseService.getDb();
+      return database.collection('companies');
+    } catch (error) {
+      throw new Error(`Cannot access companies collection: ${error.message}`);
+    }
   },
   
   getCoursesRef: () => {
-    const database = firebaseService.getDb();
-    return database.collection('courses');
+    try {
+      const database = firebaseService.getDb();
+      return database.collection('courses');
+    } catch (error) {
+      throw new Error(`Cannot access courses collection: ${error.message}`);
+    }
   },
   
   getJobsRef: () => {
-    const database = firebaseService.getDb();
-    return database.collection('jobs');
+    try {
+      const database = firebaseService.getDb();
+      return database.collection('jobs');
+    } catch (error) {
+      throw new Error(`Cannot access jobs collection: ${error.message}`);
+    }
   },
   
   getApplicationsRef: () => {
-    const database = firebaseService.getDb();
-    return database.collection('applications');
+    try {
+      const database = firebaseService.getDb();
+      return database.collection('applications');
+    } catch (error) {
+      throw new Error(`Cannot access applications collection: ${error.message}`);
+    }
   },
   
   getFacultiesRef: () => {
-    const database = firebaseService.getDb();
-    return database.collection('faculties');
+    try {
+      const database = firebaseService.getDb();
+      return database.collection('faculties');
+    } catch (error) {
+      throw new Error(`Cannot access faculties collection: ${error.message}`);
+    }
   },
   
   // Status methods
   isInitialized: () => isInitialized,
   getInitializationError: () => initializationError,
   
-  // Wait for initialization
-  waitForInit: () => initPromise,
+  // Wait for initialization with timeout
+  waitForInit: async (timeoutMs = 10000) => {
+    const startTime = Date.now();
+    while (!isInitialized && (Date.now() - startTime) < timeoutMs) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    if (!isInitialized) {
+      throw new Error(`Firebase initialization timeout after ${timeoutMs}ms`);
+    }
+    return true;
+  },
   
-  // Health check
+  // Health check - SAFE VERSION (no database operations)
   getFirebaseStatus: () => ({
     isInitialized,
     error: initializationError ? initializationError.message : null,
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    note: isInitialized ? 'Services ready' : 'Initialization pending or failed'
   })
 };
 

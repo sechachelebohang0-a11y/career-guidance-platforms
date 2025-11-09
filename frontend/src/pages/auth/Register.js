@@ -14,7 +14,7 @@ import {
   MenuItem,
   CircularProgress,
 } from '@mui/material';
-import { Link as RouterLink, useNavigate, useLocation } from 'react-router-dom';
+import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import Navbar from '../../components/common/Navbar';
 
@@ -34,13 +34,12 @@ const Register = () => {
   const [loading, setLoading] = useState(false);
   const [testingConnection, setTestingConnection] = useState(true);
   const [connectionStatus, setConnectionStatus] = useState('checking');
+  const [retryCount, setRetryCount] = useState(0);
 
   const { register, backendStatus, checkBackendStatus } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
 
   useEffect(() => {
-    // Test backend connection when component mounts
     testConnection();
   }, []);
 
@@ -76,7 +75,7 @@ const Register = () => {
     e.preventDefault();
     
     if (connectionStatus === 'failed') {
-      setError('Cannot connect to server. Please check if the Render deployment is running.');
+      setError('Backend service is starting up. Please try again in a moment.');
       return;
     }
 
@@ -117,6 +116,9 @@ const Register = () => {
       });
     } else {
       setError(result.message);
+      if (result.retryable) {
+        setRetryCount(prev => prev + 1);
+      }
     }
     
     setLoading(false);
@@ -125,7 +127,21 @@ const Register = () => {
   const handleRetryConnection = () => {
     setTestingConnection(true);
     setConnectionStatus('checking');
+    setRetryCount(0);
     testConnection();
+  };
+
+  const getStatusMessage = () => {
+    switch (connectionStatus) {
+      case 'connected':
+        return '✅ Connected to Render backend successfully!';
+      case 'failed':
+        return '⚠️ Backend service is starting up...';
+      case 'checking':
+        return '🔄 Testing connection to Render backend...';
+      default:
+        return 'Checking connection...';
+    }
   };
 
   return (
@@ -150,14 +166,14 @@ const Register = () => {
               <Alert severity="info" sx={{ mb: 2 }}>
                 <Box display="flex" alignItems="center" gap={1}>
                   <CircularProgress size={16} />
-                  Testing connection to Render backend...
+                  {getStatusMessage()}
                 </Box>
               </Alert>
             )}
             
             {connectionStatus === 'failed' && !testingConnection && (
               <Alert 
-                severity="error" 
+                severity="warning" 
                 sx={{ mb: 2 }}
                 action={
                   <Button color="inherit" size="small" onClick={handleRetryConnection}>
@@ -165,17 +181,24 @@ const Register = () => {
                   </Button>
                 }
               >
-                Cannot connect to server. Please check if the Render deployment is running.
+                <Box>
+                  <Typography variant="body2" gutterBottom>
+                    {getStatusMessage()}
+                  </Typography>
+                  <Typography variant="caption" display="block">
+                    This usually takes 1-2 minutes after deployment. Retry attempts: {retryCount}
+                  </Typography>
+                </Box>
               </Alert>
             )}
             
             {connectionStatus === 'connected' && !testingConnection && (
               <Alert severity="success" sx={{ mb: 2 }}>
-                ✅ Connected to Render backend successfully!
+                {getStatusMessage()}
               </Alert>
             )}
 
-            {error && (
+            {error && connectionStatus !== 'failed' && (
               <Alert severity="error" sx={{ mb: 2 }}>
                 {error}
               </Alert>
@@ -324,6 +347,24 @@ const Register = () => {
                 </Link>
               </Box>
             </Box>
+
+            {/* Service Status Info */}
+            {connectionStatus === 'failed' && (
+              <Box sx={{ mt: 2, p: 2, bgcolor: 'background.default', borderRadius: 1 }}>
+                <Typography variant="caption" color="text.secondary">
+                  <strong>Service Status:</strong> Backend is starting up...
+                </Typography>
+                <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1 }}>
+                  • Render deployments can take 1-2 minutes to fully start
+                </Typography>
+                <Typography variant="caption" color="text.secondary" display="block">
+                  • Authentication services initialize automatically
+                </Typography>
+                <Typography variant="caption" color="text.secondary" display="block">
+                  • Try refreshing or retrying in a moment
+                </Typography>
+              </Box>
+            )}
           </Paper>
         </Box>
       </Container>

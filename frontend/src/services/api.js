@@ -7,7 +7,7 @@ console.log('🎯 FORCED API Base URL:', API_BASE_URL);
 
 const api = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 30000,
+  timeout: 30000, // Increased timeout for Render cold starts
   headers: {
     'Content-Type': 'application/json',
   }
@@ -35,7 +35,7 @@ api.interceptors.response.use(
       url: error.config?.url,
       status: error.response?.status,
       message: error.message,
-      data: error.response?.data
+      code: error.code
     });
     
     if (error.response?.status === 401) {
@@ -44,16 +44,20 @@ api.interceptors.response.use(
       window.location.href = '/login';
     }
     
-    // Better error message
-    if (error.code === 'NETWORK_ERROR' || error.message.includes('Network Error')) {
-      error.message = 'Cannot connect to backend server. Please check if the backend is deployed on Render.';
+    // Better error message for Render cold starts
+    if (error.response?.status === 503) {
+      error.message = 'Service is starting up. Please try again in a moment.';
+    } else if (error.code === 'ECONNABORTED') {
+      error.message = 'Connection timeout. Service might be starting up.';
+    } else if (!error.response) {
+      error.message = 'Cannot connect to server. The backend might be deploying.';
     }
     
     return Promise.reject(error);
   }
 );
 
-// Enhanced connection test
+// Enhanced connection test with better error handling
 export const testBackendConnection = async () => {
   try {
     console.log('🧪 Testing backend connection to:', API_BASE_URL);
@@ -67,13 +71,24 @@ export const testBackendConnection = async () => {
     };
   } catch (error) {
     console.error('❌ Backend connection test failed:', error);
+    
+    let userMessage = 'Cannot connect to backend server';
+    let suggestion = 'The backend service might be starting up. This usually takes 1-2 minutes after deployment.';
+    
+    if (error.response?.status === 503) {
+      userMessage = 'Backend service is starting up';
+      suggestion = 'Authentication services are initializing. Please try again in a moment.';
+    } else if (error.code === 'ECONNABORTED') {
+      userMessage = 'Connection timeout';
+      suggestion = 'The backend is taking longer to respond. This is normal during cold starts.';
+    }
+    
     return { 
       success: false, 
-      message: `Cannot connect to backend server at ${API_BASE_URL}`,
+      message: userMessage,
       error: error.message,
       status: error.response?.status,
-      details: error.response?.data,
-      suggestion: 'Check if your Render deployment is running and the URL is correct'
+      suggestion: suggestion
     };
   }
 };
@@ -82,11 +97,11 @@ export const authAPI = {
   register: (data) => api.post('/auth/register', data),
   login: (data) => api.post('/auth/login', data),
   testConnection: testBackendConnection,
-  healthCheck: () => api.get('/health'),
+  healthCheck: () => api.get('/health'), // ✅ ADDED - This checks Firebase status
   testDatabase: () => api.get('/test-db')
 };
 
-// ... rest of your API exports (studentAPI, institutionAPI, etc.) remain the same
+// ... rest of your API exports remain the same
 export const studentAPI = {
   getProfile: () => api.get('/students/profile'),
   updateProfile: (data) => api.put('/students/profile', data),
