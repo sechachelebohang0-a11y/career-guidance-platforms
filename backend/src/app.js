@@ -25,13 +25,63 @@ app.use(morgan('dev'));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
+// Log all incoming requests for debugging
+app.use((req, res, next) => {
+  console.log(`📥 ${req.method} ${req.path}`, {
+    query: req.query,
+    body: req.method === 'POST' ? req.body : undefined,
+    headers: req.headers
+  });
+  next();
+});
+
+// ==================== ROUTES ====================
+
+// Root route - should be first
+app.get('/', (req, res) => {
+  res.json({
+    message: 'Career Guidance Platform API Server',
+    version: '1.0.0',
+    status: 'running',
+    environment: process.env.NODE_ENV || 'development',
+    timestamp: new Date().toISOString(),
+    endpoints: {
+      health: '/api/health',
+      test: '/api/test-db',
+      auth: '/api/auth',
+      students: '/api/students',
+      institutions: '/api/institutions',
+      companies: '/api/companies',
+      jobs: '/api/jobs',
+      admin: '/api/admin'
+    },
+    documentation: 'Check /api for more details'
+  });
+});
+
 // Simple API route
 app.get('/api', (req, res) => {
   res.json({
     message: 'Career Guidance Platform API',
     version: '1.0.0',
     timestamp: new Date().toISOString(),
-    status: 'Running'
+    status: 'Running',
+    endpoints: {
+      health: '/api/health',
+      test_connection: '/api/test-connection',
+      test_db: '/api/test-db',
+      auth_test: '/api/auth/test',
+      auth: {
+        login: 'POST /api/auth/login',
+        register: 'POST /api/auth/register',
+        profile: 'GET /api/auth/profile'
+      },
+      students: '/api/students/*',
+      institutions: '/api/institutions/*',
+      companies: '/api/companies/*',
+      jobs: '/api/jobs/*',
+      admin: '/api/admin/*'
+    }
   });
 });
 
@@ -85,7 +135,9 @@ app.get('/api/health', async (req, res) => {
       error: firebaseStatus.error,
       collections: collections
     },
-    server: 'Running normally'
+    server: 'Running normally',
+    uptime: process.uptime(),
+    memory: process.memoryUsage()
   });
 });
 
@@ -166,7 +218,7 @@ app.post('/api/test-post', (req, res) => {
   });
 });
 
-// Routes - these will handle their own Firebase errors
+// API Routes - these will handle their own Firebase errors
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/admin', require('./routes/admin'));
 app.use('/api/institutions', require('./routes/institutions'));
@@ -174,34 +226,14 @@ app.use('/api/students', require('./routes/students'));
 app.use('/api/companies', require('./routes/companies'));
 app.use('/api/jobs', require('./routes/jobs'));
 
-// Log all incoming requests for debugging
-app.use((req, res, next) => {
-  console.log(`📥 ${req.method} ${req.path}`, {
-    query: req.query,
-    body: req.method === 'POST' ? req.body : undefined,
-    headers: req.headers
-  });
-  next();
-});
+// ==================== ERROR HANDLING ====================
 
-// Error handling middleware
-app.use((error, req, res, next) => {
-  console.error('❌ Server Error:', error.message);
-  console.error('Error Stack:', error.stack);
-  res.status(500).json({ 
-    success: false,
-    message: 'Something went wrong!',
-    error: process.env.NODE_ENV === 'development' ? error.message : undefined,
-    timestamp: new Date().toISOString()
-  });
-});
-
-// 404 handler
-app.use('*', (req, res) => {
-  console.log(`❌ 404 - Route not found: ${req.originalUrl}`);
+// 404 handler for API routes
+app.use('/api/*', (req, res) => {
+  console.log(`❌ 404 - API Route not found: ${req.originalUrl}`);
   res.status(404).json({ 
     success: false,
-    message: 'Route not found',
+    message: 'API route not found',
     path: req.originalUrl,
     availableEndpoints: [
       'GET /api',
@@ -217,6 +249,32 @@ app.use('*', (req, res) => {
   });
 });
 
+// Global 404 handler (for non-API routes)
+app.use('*', (req, res) => {
+  console.log(`❌ 404 - Route not found: ${req.originalUrl}`);
+  res.status(404).json({ 
+    success: false,
+    message: 'Route not found',
+    path: req.originalUrl,
+    suggestion: 'Use /api for API endpoints or check the documentation',
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Error handling middleware
+app.use((error, req, res, next) => {
+  console.error('❌ Server Error:', error.message);
+  console.error('Error Stack:', error.stack);
+  res.status(500).json({ 
+    success: false,
+    message: 'Something went wrong!',
+    error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+    timestamp: new Date().toISOString()
+  });
+});
+
+// ==================== SERVER STARTUP ====================
+
 // Start server
 const PORT = process.env.PORT || 5000;
 
@@ -229,6 +287,7 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`🧪 Database test: http://localhost:${PORT}/api/test-db`);
   console.log(`🔧 API Base: http://localhost:${PORT}/api`);
   console.log(`🔑 Auth test: http://localhost:${PORT}/api/auth/test`);
+  console.log(`🏠 Root endpoint: http://localhost:${PORT}/`);
   
   // Check Firebase status after a short delay to allow for initialization
   setTimeout(() => {
@@ -257,3 +316,5 @@ process.on('unhandledRejection', (reason, promise) => {
   console.error('💥 Unhandled Rejection at:', promise, 'reason:', reason);
   // Optionally exit process: process.exit(1);
 });
+
+module.exports = app;
