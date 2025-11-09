@@ -1,4 +1,3 @@
-// src/context/AuthContext.js
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { authAPI } from '../services/api';
 
@@ -100,7 +99,7 @@ export const AuthProvider = ({ children }) => {
       if (backendStatus === 'offline') {
         return { 
           success: false, 
-          message: 'Backend server is unavailable. Please make sure the server is running on port 5001.' 
+          message: 'Backend server is unavailable. Please check if the Render deployment is running.' 
         };
       }
 
@@ -130,9 +129,9 @@ export const AuthProvider = ({ children }) => {
       let errorMessage = 'Login failed. Please try again.';
       
       if (error.code === 'ECONNABORTED') {
-        errorMessage = 'Connection timeout. Please check if the backend server is running on port 5001.';
+        errorMessage = 'Connection timeout. Please check if the Render deployment is running.';
       } else if (!error.response) {
-        errorMessage = 'Cannot connect to server. Please make sure the backend is running on port 5001.';
+        errorMessage = 'Cannot connect to server. Please check if the backend is deployed on Render.';
       } else {
         errorMessage = error.response?.data?.message || error.message || 'Login failed. Please try again.';
       }
@@ -150,7 +149,7 @@ export const AuthProvider = ({ children }) => {
       if (backendStatus === 'offline') {
         return { 
           success: false, 
-          message: 'Backend server is unavailable. Please make sure the server is running on port 5001.' 
+          message: 'Backend server is unavailable. Please check if the Render deployment is running.' 
         };
       }
 
@@ -162,9 +161,9 @@ export const AuthProvider = ({ children }) => {
       let errorMessage = 'Registration failed. Please try again.';
       
       if (error.code === 'ECONNABORTED') {
-        errorMessage = 'Connection timeout. Please check if the backend server is running.';
+        errorMessage = 'Connection timeout. Please check if the Render deployment is running.';
       } else if (!error.response) {
-        errorMessage = 'Cannot connect to server. Please make sure the backend is running on port 5001.';
+        errorMessage = 'Cannot connect to server. Please check if the backend is deployed on Render.';
       } else {
         errorMessage = error.response?.data?.message || 'Registration failed. Please try again.';
       }

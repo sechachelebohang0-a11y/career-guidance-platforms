@@ -1,4 +1,3 @@
-// src/pages/auth/Login.js
 import React, { useState, useEffect } from 'react';
 import {
   Container,
@@ -65,7 +64,7 @@ const Login = () => {
     e.preventDefault();
     
     if (connectionStatus === 'failed') {
-      setError('Cannot connect to server. Please make sure the backend is running on port 5001.');
+      setError('Cannot connect to server. Please check if the Render deployment is running.');
       return;
     }
 
@@ -111,7 +110,7 @@ const Login = () => {
               <Alert severity="info" sx={{ mb: 2 }}>
                 <Box display="flex" alignItems="center" gap={1}>
                   <CircularProgress size={16} />
-                  Testing connection to server...
+                  Testing connection to Render backend...
                 </Box>
               </Alert>
             )}
@@ -126,13 +125,13 @@ const Login = () => {
                   </Button>
                 }
               >
-                Cannot connect to server. Please ensure the backend is running on port 5001.
+                Cannot connect to server. Please check if the Render deployment is running.
               </Alert>
             )}
             
             {connectionStatus === 'connected' && !testingConnection && (
               <Alert severity="success" sx={{ mb: 2 }}>
-                ✅ Connected to server successfully!
+                ✅ Connected to Render backend successfully!
               </Alert>
             )}
 
