@@ -1,0 +1,33 @@
+{
+  "name": "career-guidance-backend",
+  "version": "1.0.0",
+  "description": "Backend for Career Guidance Platform",
+  "main": "src/app.js",
+  "scripts": {
+    "start": "node src/app.js",
+    "dev": "nodemon src/app.js",
+    "test": "echo \"No tests specified\" && exit 0",
+    "test-auth": "node src/scripts/test-auth.js",
+    "init-db": "node src/scripts/initializeDatabase.js",
+    "setup": "npm run init-db && npm run test-auth",
+    "health-check": "node src/scripts/health-check.js",
+    "check-connection": "node src/scripts/check-connection.js"
+  },
+  "dependencies": {
+    "axios": "^1.13.1",
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.6.1",
+    "express": "^4.21.2",
+    "express-validator": "^7.3.0",
+    "firebase": "^12.5.0",
+    "firebase-admin": "^11.11.1",
+    "helmet": "^7.2.0",
+    "jsonwebtoken": "^9.0.2",
+    "morgan": "^1.10.1",
+    "nodemailer": "^6.10.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10"
+  }
+}
