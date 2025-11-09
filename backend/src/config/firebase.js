@@ -12,21 +12,36 @@ let initializationError = null;
 
 const initializeFirebase = async () => {
   try {
-    const serviceAccountPath = path.join(__dirname, 'serviceAccountKey.json');
-    
-    if (!fs.existsSync(serviceAccountPath)) {
-      throw new Error('serviceAccountKey.json not found in src/config folder');
+    // For Render deployment - check environment variable first
+    if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+      console.log('🚀 Using Firebase service account from environment variables');
+      const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+      console.log('✅ Loaded service account for project:', serviceAccount.project_id);
+      console.log('📧 Client Email:', serviceAccount.client_email);
+
+      admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount),
+        databaseURL: `https://${serviceAccount.project_id}.firebaseio.com`
+      });
+    } else {
+      // For local development - use service account file from config folder
+      const serviceAccountPath = path.join(__dirname, 'serviceAccountKey.json');
+      
+      console.log('🔍 Looking for service account at:', serviceAccountPath);
+      
+      if (!fs.existsSync(serviceAccountPath)) {
+        throw new Error(`serviceAccountKey.json not found at: ${serviceAccountPath}`);
+      }
+
+      const serviceAccount = require(serviceAccountPath);
+      console.log('✅ Loaded service account for project:', serviceAccount.project_id);
+      console.log('📧 Client Email:', serviceAccount.client_email);
+
+      admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount),
+        databaseURL: `https://${serviceAccount.project_id}.firebaseio.com`
+      });
     }
-
-    const serviceAccount = require(serviceAccountPath);
-    console.log('✅ Loaded service account for project:', serviceAccount.project_id);
-    console.log('📧 Client Email:', serviceAccount.client_email);
-
-    // Initialize Firebase Admin
-    admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount),
-      databaseURL: `https://${serviceAccount.project_id}.firebaseio.com`
-    });
 
     console.log('✅ Firebase Admin SDK initialized successfully');
     
@@ -42,7 +57,7 @@ const initializeFirebase = async () => {
       const collections = await db.listCollections();
       console.log('📁 Available collections:', collections.map(col => col.id));
     } catch (readError) {
-      console.log('⚠️ Note: Firestore read access might be limited');
+      console.log('⚠️ Note: Firestore read access might be limited:', readError.message);
     }
     
     isInitialized = true;
