@@ -30,17 +30,14 @@ const initializeFirebase = async () => {
 
     console.log('✅ Firebase Admin SDK initialized successfully');
     
-    // Initialize services
+    // Initialize services - KEEP DATABASE CONNECTION
     db = admin.firestore();
     auth = admin.auth();
     
     console.log('✅ Firestore service initialized');
     console.log('✅ Firebase Auth initialized');
     
-    // ⚠️ SKIP the problematic connection test that was causing auth errors
-    console.log('⚠️ Skipping Firestore connection test to prevent authentication errors');
-    
-    // Just try a simple read operation instead of write
+    // Test Firestore connection - KEEP DATABASE CONNECTION
     try {
       const collections = await db.listCollections();
       console.log('📁 Available collections:', collections.map(col => col.id));
@@ -62,12 +59,12 @@ const initializeFirebase = async () => {
   }
 };
 
-// Initialize immediately
+// Initialize immediately - KEEP DATABASE CONNECTION
 const initPromise = initializeFirebase();
 
-// Define firebaseService object
+// Define firebaseService object - KEEP ALL DATABASE REFERENCES
 const firebaseService = {
-  // Safe getters
+  // Safe getters - KEEP DATABASE ACCESS
   getDb: () => {
     if (!db) {
       throw new Error('Firestore not available. Check Firebase initialization.');
@@ -82,7 +79,7 @@ const firebaseService = {
     return auth;
   },
   
-  // Collection references
+  // Collection references - KEEP ALL DATABASE COLLECTIONS
   getUsersRef: () => {
     const database = firebaseService.getDb();
     return database.collection('users');
@@ -118,7 +115,6 @@ const firebaseService = {
     return database.collection('applications');
   },
   
-  // ADD THIS MISSING METHOD
   getFacultiesRef: () => {
     const database = firebaseService.getDb();
     return database.collection('faculties');

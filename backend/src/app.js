@@ -4,7 +4,7 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 require('dotenv').config();
 
-// Import Firebase config
+// Import Firebase config - KEEP DATABASE CONNECTION
 const firebaseConfig = require('./config/firebase');
 
 const app = express();
@@ -103,7 +103,7 @@ app.get('/api/test-connection', (req, res) => {
   });
 });
 
-// Health check route that never fails
+// Health check route that never fails - KEEP DATABASE CHECK
 app.get('/api/health', async (req, res) => {
   const firebaseStatus = firebaseConfig.getFirebaseStatus();
   
@@ -112,7 +112,7 @@ app.get('/api/health', async (req, res) => {
   
   if (firebaseStatus.isInitialized) {
     try {
-      const db = firebaseConfig.getDb();
+      const db = firebaseConfig.getDb(); // KEEP DATABASE ACCESS
       const collectionsList = await db.listCollections();
       collections = collectionsList.map(col => col.id);
       detailedStatus = 'Connected and responsive';
@@ -141,7 +141,7 @@ app.get('/api/health', async (req, res) => {
   });
 });
 
-// Test Firebase connection with better error handling
+// Test Firebase connection with better error handling - KEEP DATABASE TEST
 app.get('/api/test-db', async (req, res) => {
   try {
     const firebaseStatus = firebaseConfig.getFirebaseStatus();
@@ -155,7 +155,7 @@ app.get('/api/test-db', async (req, res) => {
       });
     }
     
-    const db = firebaseConfig.getDb();
+    const db = firebaseConfig.getDb(); // KEEP DATABASE ACCESS
     
     // Simple test - just try to list collections (no write operations)
     console.log('🧪 Testing Firestore connection...');
@@ -218,7 +218,7 @@ app.post('/api/test-post', (req, res) => {
   });
 });
 
-// API Routes - these will handle their own Firebase errors
+// API Routes - these will handle their own Firebase errors - KEEP ALL ROUTES
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/admin', require('./routes/admin'));
 app.use('/api/institutions', require('./routes/institutions'));
@@ -275,8 +275,8 @@ app.use((error, req, res, next) => {
 
 // ==================== SERVER STARTUP ====================
 
-// Start server
-const PORT = process.env.PORT || 5000;
+// Start server - ONLY CHANGE: PORT FOR RENDER
+const PORT = process.env.PORT || 10000;
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Server running on port ${PORT}`);
